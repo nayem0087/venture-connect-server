@@ -27,14 +27,19 @@ const client = new MongoClient(uri, {
 });
 
 async function run() {
-    try { 
+    try {
         // Connect the client to the server	(optional starting in v4.7)
         await client.connect();
 
         const database = client.db("venture_connect_db");
         const startupCollection = database.collection("startups");
 
-        app.post('/api/startups', async(req, res) => {
+        app.get('/api/startups', async (req, res) => {
+            const result = await startupCollection.find({}).toArray();
+            res.send(result);
+        });
+
+        app.post('/api/startups', async (req, res) => {
             const startup = req.body;
             const result = await startupCollection.insertOne(startup);
             res.send(result);
