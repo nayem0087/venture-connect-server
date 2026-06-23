@@ -95,6 +95,38 @@ async function run() {
             }
         });
 
+        // Delete startup by ID
+        app.delete('/api/startups/:id', async (req, res) => {
+            try {
+                const { id } = req.params;
+
+                console.log("--- BACKEND DELETE HIT ---");
+                console.log("Delete Request for ID:", id);
+
+                if (!ObjectId.isValid(id)) {
+                    return res.status(400).json({ success: false, message: "Invalid MongoDB ID format" });
+                }
+
+                const query = { _id: new ObjectId(id) };
+                const result = await startupCollection.deleteOne(query);
+
+                console.log("MongoDB Delete Result:", result);
+
+                if (result.deletedCount === 0) {
+                    return res.status(404).json({ success: false, message: "Startup not found to delete" });
+                }
+
+                res.status(200).json({
+                    success: true,
+                    message: "Startup deleted successfully"
+                });
+
+            } catch (error) {
+                console.error("Backend Delete Error:", error);
+                res.status(500).json({ success: false, message: "Internal Server Error", error: error.message });
+            }
+        });
+
 
         // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 });
