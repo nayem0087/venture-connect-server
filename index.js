@@ -179,6 +179,33 @@ async function run() {
         });
 
 
+        //applications
+        app.get('/api/jobs-applications', async (req, res) => {
+            try {
+                const result = await opportunitiesCollection.find().toArray();
+
+                res.send({ success: true, data: result });
+            } catch (error) {
+                res.status(500).send({ success: false, message: error.message });
+            }
+        });
+
+        app.put('/api/jobs-applications/:id', async (req, res) => {
+            try {
+                const id = req.params.id;
+                const { status } = req.body; // 'accepted' বা 'rejected'
+
+                const result = await opportunitiesCollection.updateOne(
+                    { _id: new ObjectId(id) },
+                    { $set: { status: status } }
+                );
+
+                res.send({ success: true, data: result });
+            } catch (error) {
+                res.status(500).send({ success: false, message: error.message });
+            }
+        });
+
         // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
