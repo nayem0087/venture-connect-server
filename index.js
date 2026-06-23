@@ -36,6 +36,7 @@ async function run() {
 
         const database = client.db("venture_connect_db");
         const startupCollection = database.collection("startups");
+        const opportunitiesCollection = database.collection("opportunities");
 
         app.get('/api/startups', async (req, res) => {
             const result = await startupCollection.find({}).toArray();
@@ -44,9 +45,14 @@ async function run() {
 
         app.post('/api/startups', async (req, res) => {
             const startup = req.body;
-            const result = await startupCollection.insertOne(startup);
+            const newStartup = {
+                ...startup,
+                createdAt: new Date()
+            }
+            const result = await startupCollection.insertOne(newStartup);
             res.send(result);
         })
+
 
         app.put('/api/startups/:id', async (req, res) => {
             try {
@@ -69,7 +75,6 @@ async function run() {
                         funding: updatedData.funding,
                         email: updatedData.email,
                         description: updatedData.description,
-                        // 💡 logoUrl এর জায়গায় updatedData.logo ব্যবহার করা হলো
                         logo: updatedData.logo || "",
                         status: updatedData.status || "pending"
                     }
@@ -95,7 +100,7 @@ async function run() {
             }
         });
 
-        // Delete startup by ID
+
         app.delete('/api/startups/:id', async (req, res) => {
             try {
                 const { id } = req.params;
@@ -124,6 +129,52 @@ async function run() {
             } catch (error) {
                 console.error("Backend Delete Error:", error);
                 res.status(500).json({ success: false, message: "Internal Server Error", error: error.message });
+            }
+        });
+
+        // Opportunities
+
+        app.post('/api/opportunities', async (req, res) => {
+            const opportunities = req.body;
+            const newOpportunities = {
+                ...opportunities,
+                createdAt: new Date()
+            }
+            const result = await opportunitiesCollection.insertOne(newOpportunities);
+            res.send(result);
+        })
+
+        app.get('/api/jobs', async (req, res) => {
+            try {
+                const result = await opportunitiesCollection.find().sort({ createdAt: -1 }).toArray();
+                res.send({ success: true, data: result });
+            } catch (error) {
+                res.status(500).send({ success: false, message: error.message });
+            }
+        });
+
+        app.put('/api/jobs/:id', async (req, res) => {
+            try {
+                const id = req.params.id;
+                const updatedJob = req.body;
+                const { _id, ...updateData } = updatedJob;
+                const result = await opportunitiesCollection.updateOne(
+                    { _id: new ObjectId(id) },
+                    { $set: updateData }
+                );
+                res.send({ success: true, result });
+            } catch (error) {
+                res.status(500).send({ success: false, message: error.message });
+            }
+        });
+
+        app.delete('/api/jobs/:id', async (req, res) => {
+            try {
+                const id = req.params.id;
+                const result = await opportunitiesCollection.deleteOne({ _id: new ObjectId(id) });
+                res.send({ success: true, result });
+            } catch (error) {
+                res.status(500).send({ success: false, message: error.message });
             }
         });
 
