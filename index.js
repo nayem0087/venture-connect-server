@@ -37,11 +37,20 @@ async function run() {
         const database = client.db("venture_connect_db");
         const startupCollection = database.collection("startups");
         const opportunitiesCollection = database.collection("opportunities");
+        const usersCollection = database.collection("user");
+
+        app.get('/api/users', async (req, res) => {
+            
+            const cursor = usersCollection.find().skip(2);
+            const result = await cursor.toArray();
+            res.send(result);
+        })
 
         app.get('/api/startups', async (req, res) => {
             const result = await startupCollection.find({}).toArray();
             res.send(result);
         });
+
 
         app.post('/api/startups', async (req, res) => {
             const startup = req.body;
