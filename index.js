@@ -40,7 +40,7 @@ async function run() {
         const usersCollection = database.collection("user");
 
         app.get('/api/users', async (req, res) => {
-            
+
             const cursor = usersCollection.find().skip(2);
             const result = await cursor.toArray();
             res.send(result);
@@ -138,6 +138,27 @@ async function run() {
             } catch (error) {
                 console.error("Backend Delete Error:", error);
                 res.status(500).json({ success: false, message: "Internal Server Error", error: error.message });
+            }
+        });
+
+        // startups search
+        app.get('/api/opportunities', async (req, res) => {
+            try {
+                const { search, workType } = req.query;
+                let query = {};
+
+                if (search) {
+                    query.title = { $regex: search, $options: 'i' };
+                }
+
+                if (workType && workType !== "All") {
+                    query.workType = workType;
+                }
+
+                const data = await opportunitiesCollection.find(query).sort({ createdAt: -1 }).toArray();
+                res.json({ success: true, data });
+            } catch (error) {
+                res.status(500).json({ success: false, message: "Error fetching data" });
             }
         });
 
