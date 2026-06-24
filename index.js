@@ -46,11 +46,6 @@ async function run() {
             res.send(result);
         })
 
-        app.get('/api/startups', async (req, res) => {
-            const result = await startupCollection.find({}).toArray();
-            res.send(result);
-        });
-
 
         app.post('/api/startups', async (req, res) => {
             const startup = req.body;
@@ -142,6 +137,34 @@ async function run() {
         });
 
         // startups search
+        app.get('/api/startups', async (req, res) => {
+            try {
+                const { search, industry } = req.query;
+                let query = {};
+
+                if (search && search.trim() !== "") {
+                    query.$or = [
+                        { name: { $regex: search, $options: 'i' } },
+                        { description: { $regex: search, $options: 'i' } }
+                    ];
+                }
+
+                if (industry && industry !== "All" && industry.trim() !== "") {
+                    query.industry = industry;
+                }
+
+                console.log("Final MongoDB Query:", query);
+
+                const startups = await startupCollection.find(query).sort({ createdAt: -1 }).toArray();
+                res.send(startups);
+            } catch (error) {
+                console.error("Backend Error:", error);
+                res.status(500).send({ message: "Error fetching data" });
+            }
+        });
+
+
+        // opportunities
         app.get('/api/opportunities', async (req, res) => {
             try {
                 const { search, workType } = req.query;
