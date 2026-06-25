@@ -38,13 +38,32 @@ async function run() {
         const startupCollection = database.collection("startups");
         const opportunitiesCollection = database.collection("opportunities");
         const usersCollection = database.collection("user");
+        const applicationCollection = database.collection("application")
+
+
+        app.post('/api/user', async (req, res) => {
+            try {
+                const user = req.body;
+                const newUser = {
+                    ...user,
+                    createdAt: new Date()
+                };
+                const result = await usersCollection.insertOne(newUser);
+                res.status(201).json({ success: true, insertedId: result.insertedId });
+            } catch (error) {
+                res.status(500).json({ success: false, message: error.message });
+            }
+        });
 
         app.get('/api/users', async (req, res) => {
-
-            const cursor = usersCollection.find().skip(2);
-            const result = await cursor.toArray();
-            res.send(result);
-        })
+            try {
+                const cursor = usersCollection.find().skip(2);
+                const result = await cursor.toArray();
+                res.send(result);
+            } catch (error) {
+                res.status(500).json({ message: error.message });
+            }
+        });
 
 
         app.post('/api/startups', async (req, res) => {
@@ -164,7 +183,7 @@ async function run() {
         });
 
 
-        // opportunities
+        // opportunities search
         app.get('/api/opportunities', async (req, res) => {
             try {
                 const { search, workType } = req.query;
@@ -203,6 +222,21 @@ async function run() {
                 res.send({ success: true, data: result });
             } catch (error) {
                 res.status(500).send({ success: false, message: error.message });
+            }
+        });
+
+        app.get('/api/opportunities/:id', async (req, res) => {
+            try {
+                const { id } = req.params;
+                const query = { _id: new ObjectId(id) };
+                const result = await opportunitiesCollection.findOne(query);
+
+                if (!result) {
+                    return res.status(404).json({ message: "Not found" });
+                }
+                res.json(result);
+            } catch (error) {
+                res.status(500).json({ message: "Server Error" });
             }
         });
 
@@ -258,6 +292,51 @@ async function run() {
                 res.status(500).send({ success: false, message: error.message });
             }
         });
+
+        // application related api
+        app.post('/api/applications', async (req, res) => {
+            try {
+                const application = req.body;
+
+                const newApplication = {
+                    ...application,
+                    createdAt: new Date()
+                };
+                const result = await applicationCollection.insertOne(newApplication);
+
+                console.log("Application saved successfully:", result);
+                res.status(201).send(result);
+
+            } catch (error) {
+                console.error("MongoDB Insertion Error:", error.message);
+                res.status(500).send({ error: "Failed to save application", details: error.message });
+            }
+        });
+
+        app.get('/api/applications', async (req, res) => {
+    try {
+        const query = {};
+        
+        // ফ্রন্টএন্ড যদি ইমেইল দিয়ে কুয়েরি করে (সবচেয়ে নিরাপদ)
+        if (req.query.applicantEmail) {
+            query.applicantEmail = req.query.applicantEmail;
+        }
+        // ফ্রন্টএন্ড যদি আইডি দিয়ে কুয়েরি করে
+        if (req.query.applicantId) {
+            query.applicantId = req.query.applicantId;
+        }
+        if (req.query.jobId) {
+            query.jobId = req.query.jobId;
+        }
+
+        const cursor = applicationCollection.find(query); // কালেকশন নেম সিঙ্ক রাখা হয়েছে
+        const result = await cursor.toArray();
+        res.send(result);
+    } catch (error) {
+        console.error("Error fetching applications:", error);
+        res.status(500).send({ error: "Failed to fetch applications" });
+    }
+});
 
         // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 });

@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "../venture-connect-client"
+		},
+		{
+			"path": "."
+		},
+		{
+			"path": "../../hireloop-server-part-4-payment-gateway"
+		}
+	],
+	"settings": {}
+}
