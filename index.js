@@ -40,8 +40,9 @@ async function run() {
         const usersCollection = database.collection("user");
         const applicationCollection = database.collection("application");
         const planCollection = database.collection("plan");
+        const paymentsCollection = database.collection("payments");
+        const transactionsCollection = database.collection("transactions");
 
-        // await usersCollection.createIndex({ "email": 1 }, { unique: true });
 
 
         app.post('/api/user', async (req, res) => {
@@ -206,7 +207,7 @@ async function run() {
             const { id } = req.params;
             const { status } = req.body;
             const filter = { _id: new ObjectId(id) };
-            const updateDoc = { $set: { status: status } }; // ডাটাবেসে স্ট্যাটাস সেভ হচ্ছে কি?
+            const updateDoc = { $set: { status: status } };
             const result = await startupCollection.updateOne(filter, updateDoc);
             res.send(result);
         });
@@ -393,7 +394,6 @@ async function run() {
             }
         });
 
-        // plan related api
         app.get('/api/plan', async (req, res) => {
             const query = {}
             if (req.query.plan_id) {
@@ -402,6 +402,30 @@ async function run() {
             const plan = await planCollection.findOne(query);
             res.send(plan)
         })
+
+        app.get('/api/transactions', async (req, res) => {
+            try {
+                const transactions = await transactionsCollection.find({}).toArray();
+                console.log("Fetched Transactions from DB:", transactions); // এটি চেক করুন টার্মিনালে ডাটা আসছে কি না
+                res.send(transactions);
+            } catch (error) {
+                console.error("Database Error:", error);
+                res.status(500).send({ message: "Error fetching data" });
+            }
+        });
+
+        // payment related api
+        app.post('/api/payments', async (req, res) => {
+            const paymentData = req.body;
+            const result = await paymentsCollection.insertOne(paymentData);
+            res.send(result);
+        });
+
+        app.get('/api/payments', async (req, res) => {
+            const payments = await paymentsCollection.find({}).toArray();
+            res.send(payments);
+        });
+
 
         // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 });
