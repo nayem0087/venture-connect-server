@@ -38,7 +38,10 @@ async function run() {
         const startupCollection = database.collection("startups");
         const opportunitiesCollection = database.collection("opportunities");
         const usersCollection = database.collection("user");
-        const applicationCollection = database.collection("application")
+        const applicationCollection = database.collection("application");
+        const planCollection = database.collection("plan");
+
+        // await usersCollection.createIndex({ "email": 1 }, { unique: true });
 
 
         app.post('/api/user', async (req, res) => {
@@ -55,17 +58,61 @@ async function run() {
             }
         });
 
+        // app.get('/api/users', async (req, res) => {
+        //     try {
+        //         const cursor = usersCollection.find().skip(2);
+        //         const result = await cursor.toArray();
+        //         res.send(result);
+        //     } catch (error) {
+        //         res.status(500).json({ message: error.message });
+        //     }
+        // });
+
+        // GET all users
         app.get('/api/users', async (req, res) => {
             try {
-                const cursor = usersCollection.find().skip(2);
-                const result = await cursor.toArray();
+                const result = await usersCollection.find().toArray();
+                console.log("Found users:", result); // এখানে দেখুন ডাটা আসছে কি না
                 res.send(result);
             } catch (error) {
                 res.status(500).json({ message: error.message });
             }
         });
 
+        // Toggle Block Status (Block/Unblock)
+        app.patch('/api/users/:id', async (req, res) => {
+            const { id } = req.params;
+            const { status } = req.body; // 'Active' or 'Blocked'
+            const result = await usersCollection.updateOne(
+                { _id: new ObjectId(id) },
+                { $set: { status: status } }
+            );
+            res.send(result);
+        });
 
+        app.put('/api/users/:email', async (req, res) => {
+            try {
+                const { email } = req.params;
+                const updatedData = req.body;
+                const filter = { email: email };
+                const updateDoc = {
+                    $set: {
+                        name: updatedData.name,
+                        image: updatedData.image,
+                        skills: updatedData.skills,
+                        bio: updatedData.bio,
+                        updatedAt: new Date()
+                    }
+                };
+                const result = await usersCollection.updateOne(filter, updateDoc);
+                res.send({ success: true, result });
+            } catch (error) {
+                res.status(500).json({ success: false, message: error.message });
+            }
+        });
+
+
+        // startups related api 
         app.post('/api/startups', async (req, res) => {
             const startup = req.body;
             const newStartup = {
@@ -153,6 +200,15 @@ async function run() {
                 console.error("Backend Delete Error:", error);
                 res.status(500).json({ success: false, message: "Internal Server Error", error: error.message });
             }
+        });
+
+        app.patch('/api/startups/:id', async (req, res) => {
+            const { id } = req.params;
+            const { status } = req.body;
+            const filter = { _id: new ObjectId(id) };
+            const updateDoc = { $set: { status: status } }; // ডাটাবেসে স্ট্যাটাস সেভ হচ্ছে কি?
+            const result = await startupCollection.updateOne(filter, updateDoc);
+            res.send(result);
         });
 
         // startups search
@@ -314,29 +370,38 @@ async function run() {
         });
 
         app.get('/api/applications', async (req, res) => {
-    try {
-        const query = {};
-        
-        // ফ্রন্টএন্ড যদি ইমেইল দিয়ে কুয়েরি করে (সবচেয়ে নিরাপদ)
-        if (req.query.applicantEmail) {
-            query.applicantEmail = req.query.applicantEmail;
-        }
-        // ফ্রন্টএন্ড যদি আইডি দিয়ে কুয়েরি করে
-        if (req.query.applicantId) {
-            query.applicantId = req.query.applicantId;
-        }
-        if (req.query.jobId) {
-            query.jobId = req.query.jobId;
-        }
+            try {
+                const query = {};
 
-        const cursor = applicationCollection.find(query); // কালেকশন নেম সিঙ্ক রাখা হয়েছে
-        const result = await cursor.toArray();
-        res.send(result);
-    } catch (error) {
-        console.error("Error fetching applications:", error);
-        res.status(500).send({ error: "Failed to fetch applications" });
-    }
-});
+                if (req.query.applicantEmail) {
+                    query.applicantEmail = req.query.applicantEmail;
+                }
+
+                if (req.query.applicantId) {
+                    query.applicantId = req.query.applicantId;
+                }
+                if (req.query.jobId) {
+                    query.jobId = req.query.jobId;
+                }
+
+                const cursor = applicationCollection.find(query);
+                const result = await cursor.toArray();
+                res.send(result);
+            } catch (error) {
+                console.error("Error fetching applications:", error);
+                res.status(500).send({ error: "Failed to fetch applications" });
+            }
+        });
+
+        // plan related api
+        app.get('/api/plan', async (req, res) => {
+            const query = {}
+            if (req.query.plan_id) {
+                query.id = req.query.plan_id
+            }
+            const plan = await planCollection.findOne(query);
+            res.send(plan)
+        })
 
         // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 });
