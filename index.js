@@ -273,6 +273,7 @@ async function run() {
             res.send(result);
         })
 
+
         app.get('/api/jobs', async (req, res) => {
             try {
                 const result = await opportunitiesCollection.find().sort({ createdAt: -1 }).toArray();
@@ -394,6 +395,7 @@ async function run() {
             }
         });
 
+        // plan 
         app.get('/api/plan', async (req, res) => {
             const query = {}
             if (req.query.plan_id) {
@@ -402,18 +404,7 @@ async function run() {
             const plan = await planCollection.findOne(query);
             res.send(plan)
         })
-
-        app.get('/api/transactions', async (req, res) => {
-            try {
-                const transactions = await transactionsCollection.find({}).toArray();
-                console.log("Fetched Transactions from DB:", transactions); // এটি চেক করুন টার্মিনালে ডাটা আসছে কি না
-                res.send(transactions);
-            } catch (error) {
-                console.error("Database Error:", error);
-                res.status(500).send({ message: "Error fetching data" });
-            }
-        });
-
+        
         // payment related api
         app.post('/api/payments', async (req, res) => {
             const paymentData = req.body;
