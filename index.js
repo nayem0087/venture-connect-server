@@ -34,6 +34,7 @@ async function run() {
         // Connect the client to the server	(optional starting in v4.7)
         await client.connect();
 
+
         const database = client.db("venture_connect_db");
         const startupCollection = database.collection("startups");
         const opportunitiesCollection = database.collection("opportunities");
@@ -44,10 +45,22 @@ async function run() {
         const transactionsCollection = database.collection("transactions");
 
 
-
+        // user related api
         app.post('/api/user', async (req, res) => {
             try {
                 const user = req.body;
+
+                if (!user?.email) {
+                    return res.status(400).json({ success: false, message: "Email is required." });
+                }
+
+                const existingUser = await usersCollection.findOne({ email: user.email });
+                if (existingUser) {
+                    return res.status(409).json({
+                        success: false,
+                        message: "A user with this email already exists.",
+                    });
+                }
                 const newUser = {
                     ...user,
                     createdAt: new Date()
@@ -55,9 +68,18 @@ async function run() {
                 const result = await usersCollection.insertOne(newUser);
                 res.status(201).json({ success: true, insertedId: result.insertedId });
             } catch (error) {
+                if (error.code === 11000) {
+                    return res.status(409).json({
+                        success: false,
+                        message: "A user with this email already exists.",
+                    });
+                }
                 res.status(500).json({ success: false, message: error.message });
             }
         });
+
+
+
 
         // app.get('/api/users', async (req, res) => {
         //     try {
@@ -70,13 +92,68 @@ async function run() {
         // });
 
         // GET all users
+
         app.get('/api/users', async (req, res) => {
             try {
-                const result = await usersCollection.find().toArray();
-                console.log("Found users:", result); // এখানে দেখুন ডাটা আসছে কি না
+                const result = await usersCollection.find().skip(1).toArray();
+                console.log("Found users:", result);
                 res.send(result);
             } catch (error) {
                 res.status(500).json({ message: error.message });
+            }
+        });
+
+
+        // Paste this back in, in place of the commented-out block in your index.js
+        // (right alongside your other /api/users routes).
+
+
+        app.get('/api/users/:email', async (req, res) => {
+            try {
+                const { email } = req.params;
+                const user = await usersCollection.findOne({ email });
+
+                if (!user) {
+                    return res.status(404).json({ success: false, message: "User not found" });
+                }
+
+                res.send(user);
+            } catch (error) {
+                res.status(500).json({ success: false, message: error.message });
+            }
+        });
+
+        app.patch('/api/users/upgrade', async (req, res) => {
+            try {
+                const { email } = req.body;
+
+                if (!email) {
+                    return res.status(400).json({ success: false, message: "Email is required" });
+                }
+
+                const existingUser = await usersCollection.findOne({ email });
+                if (!existingUser) {
+                    return res.status(404).json({ success: false, message: "User not found" });
+                }
+
+                const premiumPlan = existingUser.role === 'founder'
+                    ? 'founder_premium'
+                    : 'collaborator_premium';
+
+                const result = await usersCollection.updateOne(
+                    { email },
+                    { $set: { isPremium: true, plan: premiumPlan, upgradedAt: new Date() } }
+                );
+
+                res.status(200).json({
+                    success: true,
+                    message: "User upgraded to premium",
+                    plan: premiumPlan,
+                });
+
+            } catch (error) {
+                console.error("Upgrade Error:", error);
+                res.status(500).json({ success: false, message: "Internal Server Error" });
             }
         });
 
@@ -404,7 +481,7 @@ async function run() {
             const plan = await planCollection.findOne(query);
             res.send(plan)
         })
-        
+
         // payment related api
         app.post('/api/payments', async (req, res) => {
             const paymentData = req.body;
