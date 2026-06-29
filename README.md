@@ -1,4 +1,7 @@
-VentureConnect Server
+# Hi there! 👋 I'm Nayem Ahmmed
+
+### 🚀 Full-Stack Web Developer | Next.js Enthusiast
+
 This is the backend server for VentureConnect, a startup team-building platform. This API handles authentication, startup management, opportunity posting, application processing, and payment integration.
 
 🚀 Features
