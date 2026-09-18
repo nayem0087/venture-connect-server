@@ -12,6 +12,7 @@ app.use(express.json());
 
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const { registerChatRoute } = require('./routes/chat');
+const { registerMatchingRoute } = require('./routes/matching');
 
 app.get('/', (req, res) => {
     res.send('Hello World!');
@@ -42,6 +43,9 @@ async function run() {
 
         // AI chatbot route, defined in routes/chat.js
         registerChatRoute(app, { startupCollection, opportunitiesCollection, planCollection });
+
+        // AI investor-startup match score route, defined in routes/matching.js
+        registerMatchingRoute(app, { startupCollection, usersCollection });
 
         // ─── User routes 
 
