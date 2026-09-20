@@ -13,6 +13,8 @@ app.use(express.json());
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const { registerChatRoute } = require('./routes/chat');
 const { registerMatchingRoute } = require('./routes/matching');
+const { registerNotificationRoutes } = require('./routes/notifications');
+const { sendEmail } = require('./lib/mailer');
 
 app.get('/', (req, res) => {
     res.send('Hello World!');
@@ -40,12 +42,16 @@ async function run() {
         const planCollection = database.collection("plan");
         const paymentsCollection = database.collection("payments");
         const transactionsCollection = database.collection("transactions");
+        const notificationsCollection = database.collection("notifications");
 
         // AI chatbot route, defined in routes/chat.js
         registerChatRoute(app, { startupCollection, opportunitiesCollection, planCollection });
 
         // AI investor-startup match score route, defined in routes/matching.js
         registerMatchingRoute(app, { startupCollection, usersCollection });
+
+        // In-app notifications (list, unread count, mark as read), defined in routes/notifications.js
+        registerNotificationRoutes(app, { notificationsCollection });
 
         // ─── User routes 
 
@@ -283,6 +289,35 @@ async function run() {
             try {
                 const application = req.body;
                 const result = await applicationCollection.insertOne({ ...application, createdAt: new Date() });
+
+                // Notify the founder — don't block the response if this fails.
+                (async () => {
+                    try {
+                        const opportunity = await opportunitiesCollection.findOne({ _id: new ObjectId(application.opportunityId) });
+                        if (opportunity?.email) {
+                            await notificationsCollection.insertOne({
+                                userEmail: opportunity.email,
+                                type: 'new_application',
+                                title: 'New Application Received',
+                                message: `${application.applicantName || 'Someone'} applied for "${application.opportunityTitle || opportunity.title}".`,
+                                link: '/dashboard/applications',
+                                read: false,
+                                createdAt: new Date(),
+                            });
+
+                            await sendEmail({
+                                to: opportunity.email,
+                                subject: `New application for "${opportunity.title}"`,
+                                html: `<p>Hi,</p>
+                                       <p><strong>${application.applicantName || 'A collaborator'}</strong> just applied for your opportunity "<strong>${opportunity.title}</strong>".</p>
+                                       <p>Log in to VentureConnect to review the application.</p>`,
+                            });
+                        }
+                    } catch (notifyError) {
+                        console.error("Failed to notify founder of new application:", notifyError.message);
+                    }
+                })();
+
                 res.status(201).send(result);
             } catch (error) {
                 res.status(500).send({ error: "Failed to save application", details: error.message });
@@ -309,6 +344,37 @@ async function run() {
                 if (!ObjectId.isValid(id)) return res.status(400).json({ success: false, message: "Invalid application ID" });
                 const result = await applicationCollection.updateOne({ _id: new ObjectId(id) }, { $set: { status } });
                 if (result.matchedCount === 0) return res.status(404).json({ success: false, message: "Application not found" });
+
+                // Notify the applicant — don't block the response if this fails.
+                (async () => {
+                    try {
+                        const application = await applicationCollection.findOne({ _id: new ObjectId(id) });
+                        if (application?.applicantEmail) {
+                            const isAccepted = status === 'accepted';
+                            await notificationsCollection.insertOne({
+                                userEmail: application.applicantEmail,
+                                type: 'application_status',
+                                title: isAccepted ? 'Application Accepted 🎉' : 'Application Update',
+                                message: `Your application for "${application.opportunityTitle}" was ${status}.`,
+                                link: '/dashboard/collaborator/applications',
+                                read: false,
+                                createdAt: new Date(),
+                            });
+
+                            await sendEmail({
+                                to: application.applicantEmail,
+                                subject: `Update on your application for "${application.opportunityTitle}"`,
+                                html: `<p>Hi ${application.applicantName || ''},</p>
+                                       <p>Your application for "<strong>${application.opportunityTitle}</strong>" has been
+                                       <strong>${status}</strong>.</p>
+                                       <p>Log in to VentureConnect to see more details.</p>`,
+                            });
+                        }
+                    } catch (notifyError) {
+                        console.error("Failed to notify applicant of status update:", notifyError.message);
+                    }
+                })();
+
                 res.status(200).json({ success: true, data: result });
             } catch (error) {
                 res.status(500).json({ success: false, message: error.message });
