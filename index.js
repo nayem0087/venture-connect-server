@@ -13,8 +13,8 @@ app.use(express.json());
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const { registerChatRoute } = require('./routes/chat');
 const { registerMatchingRoute } = require('./routes/matching');
-const { registerNotificationRoutes } = require('./routes/notifications');
-const { sendEmail } = require('./lib/mailer');
+const { registerBookmarkRoutes } = require('./routes/bookmarks');
+
 
 app.get('/', (req, res) => {
     res.send('Hello World!');
@@ -42,7 +42,7 @@ async function run() {
         const planCollection = database.collection("plan");
         const paymentsCollection = database.collection("payments");
         const transactionsCollection = database.collection("transactions");
-        const notificationsCollection = database.collection("notifications");
+        const bookmarksCollection = database.collection("bookmarks");
 
         // AI chatbot route, defined in routes/chat.js
         registerChatRoute(app, { startupCollection, opportunitiesCollection, planCollection });
@@ -50,8 +50,8 @@ async function run() {
         // AI investor-startup match score route, defined in routes/matching.js
         registerMatchingRoute(app, { startupCollection, usersCollection });
 
-        // In-app notifications (list, unread count, mark as read), defined in routes/notifications.js
-        registerNotificationRoutes(app, { notificationsCollection });
+        // Bookmarks / Saved Items, defined in routes/bookmarks.js
+        registerBookmarkRoutes(app, { bookmarksCollection, startupCollection, opportunitiesCollection });
 
         // ─── User routes 
 
